@@ -8,37 +8,16 @@ namespace Framework
 {
     public class UISys : IBaseSys
     {
-        public static string DefaultUIBundle;
+        public static readonly string DefaultUIBundle = Paths.PrefabBundle.PCombine(Paths.Normal);
 
-        private readonly List<PanelUI> _ActiveUI = new List<PanelUI>();
-        private readonly Stack<PanelUI> _CloseStack = new Stack<PanelUI>();
-        private readonly List<PanelUI> _HideStableUI = new List<PanelUI>();
+        private static readonly List<PanelUI> _ActiveUI = new List<PanelUI>();
+        private static readonly Stack<PanelUI> _CloseStack = new Stack<PanelUI>();
+        private static readonly List<PanelUI> _HideStableUI = new List<PanelUI>();
 
-        private Transform _UIContainer;
-        private Transform _UIRecycleContainer;
+        private static Transform _UIContainer;
+        private static Transform _UIRecycleContainer;
 
-        public UISys()
-        {
-            Ins = this;
-            DefaultUIBundle = Paths.PrefabBundle.PCombine(Paths.Normal);
-        }
-
-        public static UISys Ins { get; private set; }
-
-        public void OnSceneEnter(string preScene, string curScene)
-        {
-            Init();
-        }
-
-        public void OnSceneExit(string curScene)
-        {
-        }
-
-        public void OnApplicationExit()
-        {
-        }
-
-        public UISys Init()
+        public static void Init()
         {
             _UIContainer = GameObject.Find(Config.UiFramworkBaseObjName).transform.Find("UI");
 
@@ -65,25 +44,24 @@ namespace Framework
 
             foreach (var item in move)
                 item.SetParent(_UIRecycleContainer);
-            return this;
         }
 
-        public PanelUI OpenUI(string uiName, UiInitType act = 0)
+        public static PanelUI OpenUI(string uiName, UiInitType act = 0)
         {
             return OpenUI<PanelUI>(uiName, act);
         }
 
-        public PanelUI OpenUI(string uiName, string after, bool dialog = true, UiInitType act = 0)
+        public static PanelUI OpenUI(string uiName, string after, bool dialog = true, UiInitType act = 0)
         {
             return OpenUI<PanelUI>(uiName, after, dialog, act);
         }
 
-        public T OpenUI<T>(string uiName, UiInitType act = 0) where T : PanelUI
+        public static T OpenUI<T>(string uiName, UiInitType act = 0) where T : PanelUI
         {
             return OpenUI<T>(new OpenParam(uiName, _UIContainer.childCount, null, act));
         }
 
-        public T OpenUI<T>(string uiName, string after, bool dialog = true, UiInitType act = 0)
+        public static T OpenUI<T>(string uiName, string after, bool dialog = true, UiInitType act = 0)
             where T : PanelUI
         {
             var index = _ActiveUI.FindIndex(x => x.EntityName == after);
@@ -94,13 +72,13 @@ namespace Framework
             return null;
         }
 
-        private T OpenUI<T>(OpenParam param) where T : PanelUI
+        private static T OpenUI<T>(OpenParam param) where T : PanelUI
         {
             var panel = _HideStableUI.FirstOrDefault(x => x.EntityName == param.UiName);
             if (panel != null)
                 _HideStableUI.Remove(panel);
 
-            panel = panel ?? ObjectPool.Ins.Alloc<PanelUI>(new AssetId(DefaultUIBundle,param.UiName));
+            panel = panel ?? ObjectPool.Get<PanelUI>(new AssetId(DefaultUIBundle, param.UiName));
 
             panel.transform.SetParent(_UIContainer);
             panel.transform.SetSiblingIndex(param.SiblingIndex);
@@ -118,14 +96,14 @@ namespace Framework
             return panel as T;
         }
 
-        public void CloseUI(string uiName, bool force = false)
+        public static void CloseUI(string uiName, bool force = false)
         {
             var baseUi = _ActiveUI.FirstOrDefault(x => x.EntityName == uiName);
             Assert.IsNotNull(baseUi, $"没有名为 {uiName} 的UI");
             CloseUI(baseUi, force);
         }
 
-        private void CloseUI(PanelUI panelUI, bool force = false)
+        private static void CloseUI(PanelUI panelUI, bool force = false)
         {
             if (!force && panelUI.Dialog != null) return;
 
@@ -154,7 +132,7 @@ namespace Framework
                     }
                     else
                     {
-                        ObjectPool.Ins.Recycle(curUi);
+                        ObjectPool.Put(curUi);
                     }
 
                     continue;
@@ -167,17 +145,17 @@ namespace Framework
             }
         }
 
-        public bool IsUIOpened(PanelUI panelUI)
+        public static bool IsUIOpened(PanelUI panelUI)
         {
             return GetUI(panelUI.EntityName) != null;
         }
 
-        public bool IsUIOpened(string uiName)
+        public static bool IsUIOpened(string uiName)
         {
             return GetUI(uiName) != null;
         }
 
-        public void SwitchUI(string uiName)
+        public static void SwitchUI(string uiName)
         {
             if (IsUIOpened(uiName))
                 CloseUI(uiName);
@@ -190,10 +168,19 @@ namespace Framework
             return dialog != null && dialog.gameObject.activeSelf;
         }
 
-        private PanelUI GetUI(string uiName)
+        private static PanelUI GetUI(string uiName)
         {
             return _ActiveUI.FirstOrDefault(x => x.EntityName == uiName);
         }
+
+        public void OnSceneEnter(string preScene, string curScene)
+        {
+            Init();
+        }
+
+        public void OnSceneExit(string curScene) { }
+
+        public void OnApplicationExit() { }
 
         private readonly struct OpenParam
         {

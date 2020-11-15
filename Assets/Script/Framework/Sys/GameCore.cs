@@ -13,13 +13,8 @@ namespace Framework
     {
         // 是否启用异常记录功能
         public static bool SaveLog =
-#if UNITY_EDITOR
-            false;
-#elif UNITY_STANDALONE_WIN
-            true;
-#else
-            false;
-#endif
+            !Platform.CurPlatform.HasFlag(Platforms.Editor) &&
+            Platform.CurPlatform.HasFlag(Platforms.StandaloneWin);
 
         public static GameCore Ins { get; private set; }
         public static Transform Container { get; private set; }
@@ -43,15 +38,15 @@ namespace Framework
                 SaveLog = false;
             }// 如果开启了异常记录功能，就会将每一个异常记录到指定的日志文件中
 
-            // 初始化各系统并将他们象转换成数组
+            // 初始化各系统并将他们转换成数组
             var sys = new IBaseSys[]
             {
                 new BundleSys(),
                 new DataBaseSys(),
                 gameObject.AddComponent<ControlSys>(),
+                gameObject.AddComponent<ObjectPool>(),
                 new UISys(),
                 new ValueSys(),
-                gameObject.AddComponent<ObjectPool>(),
                 new TextSys(),
             };
             var customSys = Config.Init();

@@ -7,40 +7,20 @@ namespace Framework
 {
     public class ValueSys : IBaseSys
     {
-        private static string _DefaultBundle;
+        private static readonly string _DefaultBundle = Paths.ValuesBundle.PCombine(Paths.Normal);
+        private static readonly Dictionary<AssetId, ValueUnit> _Values = new Dictionary<AssetId, ValueUnit>();
 
-        private readonly Dictionary<AssetId, ValueUnit> _Values = new Dictionary<AssetId, ValueUnit>();
-        public static ValueSys Ins { get; private set; }
-
-        public ValueSys()
-        {
-            Ins = this;
-            _DefaultBundle = Paths.ValuesBundle.PCombine(Paths.Normal);
-        }
-
-        public void OnSceneEnter(string preScene, string curScene)
-        {
-        }
-
-        public void OnSceneExit(string curScene)
-        {
-        }
-
-        public void OnApplicationExit()
-        {
-        }
-
-        public T GetValue<T>(string valuePath)
+        public static T GetValue<T>(string valuePath)
         {
             return GetValue<T>(AssetId.Parse(valuePath, _DefaultBundle));
         }
 
-        public T GetValue<T>(string bundle, string name)
+        public static T GetValue<T>(string bundle, string name)
         {
             return GetValue<T>(new AssetId(bundle??_DefaultBundle, name));
         }
 
-        private T GetValue<T>(AssetId id)
+        private static T GetValue<T>(AssetId id)
         {
             for (var i = 0; i < 2; i++)
             {
@@ -64,15 +44,21 @@ namespace Framework
             return default;
         }
 
-        private void LoadBundle(AssetId id)
+        private static void LoadBundle(AssetId id)
         {
-            foreach (var asset in BundleSys.Ins.GetAllAsset<TextAsset>( id.Bundle))
+            foreach (var asset in BundleSys.GetAllAsset<TextAsset>( id.Bundle))
             {
                 id.Name = asset.name;
                 if (_Values.ContainsKey(id)) continue;
                 _Values.Add(id, new ValueUnit(asset.text));
             }
         }
+        
+        public void OnSceneEnter(string preScene, string curScene) { }
+
+        public void OnSceneExit(string curScene) { }
+
+        public void OnApplicationExit() { }
 
         private struct ValueUnit
         {

@@ -1,24 +1,29 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 namespace Framework
 {
+    /// <summary>
+    /// 对象池。可调用的游戏物体上必须附加有至少一个继承了IObjectPool的组件
+    /// <br/>使用Get请求一个对象，转型他的组件后返回
+    /// <br/>使用Put回收对象，将其放入对象池中
+    /// </summary>
     public class ObjectPool : MonoBehaviour, IBaseSys
     {
         public float ClearTime = 5;
 
-        private readonly Dictionary<AssetId, Pool> _Pools = new Dictionary<AssetId, Pool>();
+        private static readonly Dictionary<AssetId, Pool> _Pools = new Dictionary<AssetId, Pool>();
+        private static readonly string _DefaultBundle = Paths.PrefabBundle.PCombine(Paths.Normal);
+        private static ObjectPool _Ins;
 
-        private static string _DefaultBundle;
-
-        public static ObjectPool Ins { get; private set; }
-        
         private void Awake()
         {
-            Ins = this;
-            _DefaultBundle = Paths.PrefabBundle.PCombine(Paths.Normal);
+            if(_Ins!=null)
+                throw new InitDuplicatelyException();
 
+            _Ins = this;
             new AutoCounter(this, ClearTime).OnComplete(() =>
             {
                 foreach (var item in _Pools.Values)
@@ -27,13 +32,28 @@ namespace Framework
             SceneManager.sceneUnloaded += x => _Pools.Clear();
         }
 
-        public T Alloc<T>(string assetPath) where T : MonoBehaviour
+        /// <summary>
+        /// 从对象池中取出对象
+        /// </summary>
+        /// <typeparam name="T">需要转换的类型</typeparam>
+        /// <param name="assetPath"></param>
+        /// <returns></returns>
+        public static T Get<T>(string assetPath) where T : MonoBehaviour
         {
-            return Alloc<T>(AssetId.Parse(assetPath,_DefaultBundle));
+            return Get<T>(AssetId.Parse(assetPath,_DefaultBundle));
         }
 
-        public T Alloc<T>(AssetId assetId) where T : MonoBehaviour
+        /// <summary>
+        /// 从对象池中取出对象
+        /// </summary>
+        /// <typeparam name="T">需要转换的类型</typeparam>
+        /// <param name="assetId"></param>
+        /// <returns></returns>
+        public static T Get<T>(AssetId assetId) where T : MonoBehaviour
         {
+            if(_Ins==null)
+                throw new Exception("对象池未初始化");
+
             var pool = GetPool(assetId);
             if (!pool.Allocable)
                 return default;
@@ -58,21 +78,25 @@ namespace Framework
             return aop as T;
         }
 
-        public void Recycle(IObjectPool obj)
+        /// <summary>
+        /// 将对象放入对象池
+        /// </summary>
+        /// <param name="obj"></param>
+        public static void Put(IObjectPool obj)
         {
-            obj.OpRecycle();
+            obj.OpPut();
             var gameObj = (obj as MonoBehaviour).gameObject;
             gameObj.SetActive(false);
             gameObj.transform.SetParent(GameCore.Container);
             _Pools[obj.AssetId].Enqueue(obj);
         }
 
-        public GameObject GetPrefab(string assetPath)
+        public static GameObject GetPrefab(string assetPath)
         {
             return GetPool(AssetId.Parse(assetPath,_DefaultBundle)).Prefab;
         }
 
-        private Pool GetPool(AssetId id)
+        private static Pool GetPool(AssetId id)
         {
             if (_Pools.TryGetValue(id, out var pool)) return pool;
             CreatePool(id);
@@ -82,23 +106,17 @@ namespace Framework
             return pool;
         }
 
-        private void CreatePool(AssetId id)
+        private static void CreatePool(AssetId id)
         {
-            var prefab = BundleSys.Ins.GetAsset<GameObject>(id);
+            var prefab = BundleSys.GetAsset<GameObject>(id);
             _Pools.Add(id, new Pool(prefab, prefab.GetComponent<IObjectPool>() != null));
         }
 
-        public void OnSceneEnter(string preScene, string curScene)
-        {
-        }
+        public void OnSceneEnter(string preScene, string curScene){}
 
-        public void OnSceneExit(string curScene)
-        {
-        }
+        public void OnSceneExit(string curScene){}
 
-        public void OnApplicationExit()
-        {
-        }
+        public void OnApplicationExit(){}
         
         private class Pool
         {
@@ -139,9 +157,21 @@ namespace Framework
 
     public interface IObjectPool
     {
+        /// <summary>
+        /// 游戏物体的资源ID
+        /// </summary>
         AssetId AssetId { get; set; }
+        /// <summary>
+        /// 从对象池中取出时调用
+        /// </summary>
         void OpReset();
-        void OpRecycle();
+        /// <summary>
+        /// 放入对象池时调用
+        /// </summary>
+        void OpPut();
+        /// <summary>
+        /// 在池中被销毁时调用
+        /// </summary>
         void OpDestroy();
     }
 }

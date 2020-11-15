@@ -9,8 +9,6 @@ namespace Framework
 {
     public class DataBaseSys : IBaseSys
     {
-        public static DataBaseSys Ins;
-
         public static readonly HashSet<string> AvaliableDataType = new HashSet<string>()
         {
             "int",
@@ -18,21 +16,13 @@ namespace Framework
             "bool",
             "float"
         };
-        private static string _DefaultBundle;
-        private readonly Dictionary<AssetId, TableUnit> _Tables = new Dictionary<AssetId, TableUnit>();
-
-        public DataBaseSys()
-        {
-            Ins = this;
-            _DefaultBundle = Paths.DatabaseBundle.PCombine(Paths.Normal);
-        }
-
-        public Table this[string tablePath] => GetTable(tablePath);
+        private static readonly string _DefaultBundle = Paths.DatabaseBundle.PCombine(Paths.Normal);
+        private static readonly Dictionary<AssetId, TableUnit> _Tables = new Dictionary<AssetId, TableUnit>();
 
         /// <summary>
         ///     谨慎使用，若删除表后再获取会引起大量的重复载入
         /// </summary>
-        public bool DeleteTable(string tablePath)
+        public static bool DeleteTable(string tablePath)
         {
             return _Tables.Remove(AssetId.Parse(tablePath, _DefaultBundle));
         }
@@ -41,7 +31,7 @@ namespace Framework
         ///     删除指定bundle的所有表
         /// </summary>
         /// <param name="bundlePath"></param>
-        public void DeleteAllTable(string bundlePath)
+        public static void DeleteAllTable(string bundlePath)
         {
             var id = AssetId.Parse(bundlePath, _DefaultBundle);
             var keys = _Tables.Keys.Where(x => x.Bundle == id.Bundle).ToArray();
@@ -50,7 +40,7 @@ namespace Framework
                 _Tables.Remove(tableId);
         }
 
-        public Table GetTable(string tablePath)
+        public static Table GetTable(string tablePath)
         {
             var id = AssetId.Parse(tablePath, _DefaultBundle);
             for (var i = 0; i < 2; i++)
@@ -75,14 +65,14 @@ namespace Framework
             return default;
         }
 
-        public void LoadBundle(string bundlePath)
+        public static void LoadBundle(string bundlePath)
         {
             LoadBundle(AssetId.Parse(bundlePath, _DefaultBundle));
         }
 
-        private void LoadBundle(AssetId id)
+        private static void LoadBundle(AssetId id)
         {
-            var assets = BundleSys.Ins.GetAllAsset<TextAsset>(id.Bundle);
+            var assets = BundleSys.GetAllAsset<TextAsset>(id.Bundle);
 
             foreach (var item in assets)
             {
@@ -91,21 +81,14 @@ namespace Framework
                 _Tables.Add(id, new TableUnit(default, item.text));
             }
 
-            BundleSys.Ins.ReleaseBundle( id.Bundle);
+            BundleSys.ReleaseBundle(id.Bundle);
         }
 
+        public void OnSceneEnter(string preScene, string curScene) { }
 
-        public void OnSceneEnter(string preScene, string curScene)
-        {
-        }
+        public void OnSceneExit(string curScene) { }
 
-        public void OnSceneExit(string curScene)
-        {
-        }
-
-        public void OnApplicationExit()
-        {
-        }
+        public void OnApplicationExit() { }
 
         private struct TableUnit
         {
@@ -145,10 +128,10 @@ namespace Framework
                     switch (json.Rows[i][j])
                     {
                         case long _:
-                            json.Rows[i][j] = (int) (long) json.Rows[i][j];
+                            json.Rows[i][j] = (int)(long)json.Rows[i][j];
                             break;
                         case double _:
-                            json.Rows[i][j] = (float) (double) json.Rows[i][j];
+                            json.Rows[i][j] = (float)(double)json.Rows[i][j];
                             break;
                     }
 
@@ -162,7 +145,7 @@ namespace Framework
 
         public IEnumerator<Row> GetEnumerator()
         {
-            return ((IEnumerable<Row>) _Rows).GetEnumerator();
+            return ((IEnumerable<Row>)_Rows).GetEnumerator();
         }
 
         IEnumerator IEnumerable.GetEnumerator()
@@ -208,7 +191,7 @@ namespace Framework
 
         public IEnumerator<Cell> GetEnumerator()
         {
-            return ((IEnumerable<Cell>) _Cells).GetEnumerator();
+            return ((IEnumerable<Cell>)_Cells).GetEnumerator();
         }
 
         IEnumerator IEnumerable.GetEnumerator()
@@ -247,22 +230,22 @@ namespace Framework
 
         public static implicit operator int(Cell c)
         {
-            return (int) c.Data;
+            return (int)c.Data;
         }
 
         public static implicit operator float(Cell c)
         {
-            return (float) c.Data;
+            return (float)c.Data;
         }
 
         public static implicit operator string(Cell c)
         {
-            return (string) c.Data;
+            return (string)c.Data;
         }
 
         public static implicit operator bool(Cell c)
         {
-            return (bool) c.Data;
+            return (bool)c.Data;
         }
     }
 }

@@ -14,7 +14,8 @@ namespace Framework
     public class BundleDependencyException : Exception
     {
         public BundleDependencyException(string bundleName, int dependencyCount) :
-            base($"{bundleName} 仍有 {dependencyCount} 个bundle依赖于它，不能释放"){}
+            base($"{bundleName} 仍有 {dependencyCount} 个bundle依赖于它，不能释放")
+        { }
     }
 
     /// <summary>
@@ -22,6 +23,15 @@ namespace Framework
     /// </summary>
     public class ResourceNotFoundException : Exception
     {
-        public ResourceNotFoundException(string msg):base(msg){}
+        public ResourceNotFoundException(string msg) : base(msg) { }
+    }
+
+    /// <summary>
+    /// 重复初始化时触发
+    /// </summary>
+    public class InitDuplicatelyException : Exception
+    {
+        public InitDuplicatelyException() { }
+        public InitDuplicatelyException(string msg) : base(msg) { }
     }
 }

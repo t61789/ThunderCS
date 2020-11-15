@@ -36,26 +36,82 @@ namespace Framework
         private static void LoadFromXml(string path)
         {
             var root = XDocument.Load(path).Root;
-            BundleBasePath = root.Element(nameof(BundleBasePath)).Attribute("path").Value.Replace(Div,Path.PathSeparator);
-            LogPath = root.Element(nameof(LogPath)).Attribute("path").Value.Replace(Div, Path.PathSeparator);
 
+            // 反射填充bundle名
             var t = typeof(Path);
             foreach (var e in root.Element("SysBundleName").Elements())
                 t.GetField(e.Name.ToString(), BindingFlags.Static | BindingFlags.Public)
-                    .SetValue(null,e.Attribute("name").Value);
+                    .SetValue(null, e.Attribute("name").Value);
 
-            var platform = "";
-#if UNITY_STANDALONE || UNITY_EDITOR
-            DocumentPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-            platform = "Standalone";
-#elif UNITY_ANDROID
-            DocumentPath = Application.persistentDataPath;
-            platform = "Android";
-#else
-            Debug.LogError("不支持当前平台");
-#endif
-            var docRelativePath = root.Element("DocumentRelativePath").Element(platform).Attribute("path").Value;
-            DocumentPath = DocumentPath.PCombine(docRelativePath);
+            // 处理相对路径
+            string platformName;
+            var platform = Platform.CurPlatform;
+            if (platform.HasFlag(Platforms.Standalone) || platform.HasFlag(Platforms.Editor))
+            {
+                DocumentPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+                BundleBasePath = Application.dataPath;
+                platformName = "Standalone";
+            }
+            else if (platform.HasFlag(Platforms.Android))
+            {
+                DocumentPath = Application.persistentDataPath;
+                BundleBasePath = DocumentPath;
+                platformName = "Android";
+            }
+            else
+            {
+                throw new Exception("不支持当前平台");
+            }
+            LogPath = BundleBasePath;
+
+            var el = root.Element("PlatformRelative").Element(platformName);
+            DocumentPath = DocumentPath.PCombine(el.Element("Document").Attribute("path").Value);
+            BundleBasePath = BundleBasePath.PCombine(el.Element("Bundle").Attribute("path").Value);
+            LogPath = LogPath.PCombine(el.Element("Log").Attribute("path").Value);
+
+            // 处理强制路径
+            el = root.Element(nameof(BundleBasePath));
+            if (el.Attribute("enable").Value == "true")
+                BundleBasePath = el.Attribute("path").Value.Replace(Div, Path.PathSeparator);
+            el = root.Element(nameof(LogPath));
+            if (el.Attribute("enable").Value == "true")
+                LogPath = el.Attribute("path").Value.Replace(Div, Path.PathSeparator);
         }
+    }
+    public class Platform
+    {
+        public static Platforms CurPlatform;
+
+        static Platform()
+        {
+            ResolveCurPlatform();
+        }
+
+        private static void ResolveCurPlatform()
+        {
+            CurPlatform = 0;
+#if UNITY_EDITOR
+            CurPlatform &= Platforms.Editor;
+#endif
+#if UNITY_ANDROID
+            CurPlatform &= Platforms.Android;
+#endif
+#if UNITY_STANDALONE
+            CurPlatform &= Platforms.Standalone;
+#endif
+#if UNITY_STANDALONE_WIN
+            CurPlatform &= Platforms.StandaloneWin;
+#endif
+
+        }
+    }
+
+    [Flags]
+    public enum Platforms
+    {
+        Standalone = 1,
+        Editor = 1 << 1,
+        Android = 1 << 2,
+        StandaloneWin = 1 << 3,
     }
 }

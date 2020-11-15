@@ -18,8 +18,7 @@ namespace Framework
                 return false;
 
             var dirs = (
-                from row
-                    in DataBaseSys.Ins["directory_struct"]
+                from row in DataBaseSys.GetTable("directory_struct")
                 where row["id"] == "save"
                 select row).ToArray();
 
@@ -54,7 +53,7 @@ namespace Framework
         public static void Save()
         {
             File.WriteAllText(
-                Paths.DocumentPath.PCombine(SaveName).PCombine("data").PCombine("save.json"), 
+                Paths.DocumentPath.PCombine(SaveName).PCombine("data").PCombine("save.json"),
                 JsonConvert.SerializeObject(SaveData.Ins));
         }
 

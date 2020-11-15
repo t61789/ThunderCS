@@ -1,11 +1,11 @@
 ﻿<?xml version="1.0" encoding="utf-8" ?>
 <root>
-  <!--这两个路径为强制路径，用于开发阶段调试，如果在Platform定义了新的路径则会被覆盖-->
-  <!--此外document路径没有绝对路径，只能在相对路径中定义-->
-  <BundleBasePath path="E:\AssetBundles\StandaloneWindows"/>
-  <LogPath path="E:\ThunderLog.txt"/>
+  <!--这两个路径为强制路径，用于开发阶段调试，如果enable为true则会覆盖相对路径-->
+  <!--此外document路径没有强制路径，只能在相对路径中定义-->
+  <BundleBasePath enable="true" path="E:\AssetBundles\StandaloneWindows"/>
+  <LogPath enable="true" path="E:\ThunderLog.txt"/>
 
-  <!--相对路径，基路径由程序决定，可覆盖强制路径-->
+  <!--相对路径，基路径由程序决定-->
   <PlatformRelative>
     <Android>
       <Bundle path="AssetBundles"/>
@@ -19,6 +19,7 @@
     </Standalone>
   </PlatformRelative>
 
+  <!--各系统所需数据的bundle文件夹名-->
   <SysBundleName>
     <DllBundle name="dll"/>
     <PrefabBundle name="prefabs"/>

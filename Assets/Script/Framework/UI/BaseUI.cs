@@ -14,7 +14,7 @@ namespace Framework
             RectTrans = transform as RectTransform;
         }
 
-        public virtual void OpRecycle()
+        public virtual void OpPut()
         {
         }
 

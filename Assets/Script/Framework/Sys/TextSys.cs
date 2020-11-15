@@ -10,29 +10,24 @@ namespace Framework
     {
         public TextSys()
         {
+
             var dic = (
-                    from row in DataBaseSys.Ins["text"]
-                    select new {key = (string) row["key"], text = (string) row["text"]})
+                    from row in DataBaseSys.GetTable("text")
+                    select new { key = (string)row["key"], text = (string)row["text"] })
                 .ToDictionary(x => x.key, x => x.text);
             SetStrValues(dic);
         }
 
-        public void OnSceneEnter(string preScene, string curScene)
+        private static void SetStrValues(IReadOnlyDictionary<string, string> dic)
         {
-        }
-
-        public void OnSceneExit(string curScene)
-        {
-        }
-
-        public void OnApplicationExit()
-        {
-        }
-
-        private void SetStrValues(IReadOnlyDictionary<string, string> dic)
-        {
-            foreach (var field in GetType().GetFields(BindingFlags.Static | BindingFlags.Public))
+            foreach (var field in typeof(TextSys).GetFields(BindingFlags.Static | BindingFlags.Public))
                 field.SetValue(null, dic[field.Name]);
         }
+
+        public void OnSceneEnter(string preScene, string curScene) { }
+
+        public void OnSceneExit(string curScene) { }
+
+        public void OnApplicationExit() { }
     }
 }

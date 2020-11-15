@@ -16,69 +16,18 @@ namespace Framework
 
     public class ControlSys : MonoBehaviour, IBaseSys
     {
-        [HideInInspector] public ShieldValue ShieldValue = new ShieldValue();
-
-        private readonly Dictionary<string, ControlInfo> _BufferKey =
-            new Dictionary<string, ControlInfo>();
-
-        private readonly Dictionary<string, ControlInfo> _CusKey =
-            new Dictionary<string, ControlInfo>();
-
-        private readonly HashSet<string> _InvalidInputManagerKey =
-            new HashSet<string>();
-
-        public static ControlSys Ins { get; private set; }
-
-        public void OnSceneEnter(string preScene, string curScene)
-        {
-        }
-
-        public void OnSceneExit(string curScene)
-        {
-        }
-
-        public void OnApplicationExit()
-        {
-        }
-
-        public ControlInfo RequireKey(string key, float shieldValue)
-        {
-            if (shieldValue < ShieldValue) return ControlInfo.Default;
-
-            var fromInputManager = ControlInfo.Default;
-            if (!_InvalidInputManagerKey.Contains(key))
-                try
-                {
-                    fromInputManager = new ControlInfo(new Vector3(Input.GetAxis(key), 0),
-                        Input.GetButton(key),
-                        Input.GetButtonDown(key),
-                        Input.GetButtonUp(key));
-                }
-                catch (ArgumentException)
-                {
-                    _InvalidInputManagerKey.Add(key);
-                }
-
-            return _CusKey.TryGetValue(key, out var value) ? KeyConflict(fromInputManager, value) : fromInputManager;
-        }
-
-        public void InjectValue(string key, ControlInfo info)
-        {
-            if (_BufferKey.TryGetValue(key, out var value))
-                _BufferKey[key] = KeyConflict(value, info);
-            else
-                _BufferKey.Add(key, info);
-        }
-
-        private static ControlInfo KeyConflict(ControlInfo ctr1, ControlInfo ctr2) // ctr1优先
-        {
-            if (ctr1.Equals(ControlInfo.Default) && !ctr2.Equals(ControlInfo.Default)) return ctr2;
-            return ctr1;
-        }
+        public static ShieldValue ShieldValue = new ShieldValue();
+        private static readonly Dictionary<string, ControlInfo> _BufferKey = new Dictionary<string, ControlInfo>();
+        private static readonly Dictionary<string, ControlInfo> _CusKey = new Dictionary<string, ControlInfo>();
+        private static readonly HashSet<string> _InvalidInputManagerKey = new HashSet<string>();
+        private static ControlSys _Ins;
 
         private void Awake()
         {
-            Ins = this;
+            if (_Ins != null)
+                throw new InitDuplicatelyException();
+            _Ins = this;
+
 #if UNITY_STANDALONE || UNITY_EDITOR
             if (_LockCursor) _LockCursor = false;
 #endif
@@ -105,7 +54,42 @@ namespace Framework
             _BufferKey.Clear();
         }
 
-        private void SpecialInject()
+        public static ControlInfo RequireKey(string key, float shieldValue)
+        {
+            if (shieldValue < ShieldValue) return ControlInfo.Default;
+
+            var fromInputManager = ControlInfo.Default;
+            if (!_InvalidInputManagerKey.Contains(key))
+                try
+                {
+                    fromInputManager = new ControlInfo(new Vector3(Input.GetAxis(key), 0),
+                        Input.GetButton(key),
+                        Input.GetButtonDown(key),
+                        Input.GetButtonUp(key));
+                }
+                catch (ArgumentException)
+                {
+                    _InvalidInputManagerKey.Add(key);
+                }
+
+            return _CusKey.TryGetValue(key, out var value) ? KeyConflict(fromInputManager, value) : fromInputManager;
+        }
+
+        public static void InjectValue(string key, ControlInfo info)
+        {
+            if (_BufferKey.TryGetValue(key, out var value))
+                _BufferKey[key] = KeyConflict(value, info);
+            else
+                _BufferKey.Add(key, info);
+        }
+
+        private static ControlInfo KeyConflict(ControlInfo ctr1, ControlInfo ctr2) // ctr1优先
+        {
+            if (ctr1.Equals(ControlInfo.Default) && !ctr2.Equals(ControlInfo.Default)) return ctr2;
+            return ctr1;
+        }
+
+        private static void SpecialInject()
         {
 #if UNITY_STANDALONE || UNITY_EDITOR
 
@@ -136,10 +120,10 @@ namespace Framework
         }
 
 #if UNITY_STANDALONE || UNITY_EDITOR
-        private readonly KeyCode[] _CodesArr = {KeyCode.W, KeyCode.A, KeyCode.S, KeyCode.D};
-        private readonly Vector2[] _DirsArr = {Vector2.up, Vector2.left, Vector2.down, Vector2.right};
+        private static readonly KeyCode[] _CodesArr = { KeyCode.W, KeyCode.A, KeyCode.S, KeyCode.D };
+        private static readonly Vector2[] _DirsArr = { Vector2.up, Vector2.left, Vector2.down, Vector2.right };
 
-        public bool LockCursor
+        public static bool LockCursor
         {
             get => _LockCursor;
             set
@@ -149,8 +133,14 @@ namespace Framework
             }
         }
 
-        private bool _LockCursor;
+        private static bool _LockCursor;
 #endif
+
+        public void OnSceneEnter(string preScene, string curScene) { }
+
+        public void OnSceneExit(string curScene) { }
+
+        public void OnApplicationExit() { }
     }
 
     public struct ControlInfo

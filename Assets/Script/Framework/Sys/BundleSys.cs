@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Configuration;
 using System.Text;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -13,17 +14,13 @@ namespace Framework
     /// </summary>
     public class BundleSys : IBaseSys
     {
-        private readonly Dictionary<string, BundleUnit> _Bundles;
-        private readonly AssetBundle _MainfestBundle;
-        private AssetBundleManifest _Mainfest;
-        private readonly Queue<string> _LoadQueue = new Queue<string>();    // 用于加载bundle的队列
-
-        public static BundleSys Ins { get; private set; }
+        private static Dictionary<string, BundleUnit> _Bundles;
+        private static AssetBundle _MainfestBundle;
+        private static AssetBundleManifest _Mainfest;
+        private static readonly Queue<string> _LoadQueue = new Queue<string>();    // 用于加载bundle的队列
 
         public BundleSys()
         {
-            Ins = this; // 单例模式
-
             // 读取Mainfest文件，用于获取依赖信息
             _MainfestBundle = AssetBundle.LoadFromFile(Paths.BundleBasePath + Paths.Div + Path.GetFileName(Paths.BundleBasePath));
             _Mainfest = _MainfestBundle.LoadAsset<AssetBundleManifest>("AssetBundleManifest");
@@ -31,30 +28,30 @@ namespace Framework
             _Bundles = new Dictionary<string, BundleUnit>();
         }
 
-        public T GetAsset<T>(string assetPath) where T : Object
+        public static T GetAsset<T>(string assetPath) where T : Object
         {
             return GetAsset<T>(AssetId.Parse(assetPath));
         }
 
-        public T GetAsset<T>(AssetId assetId) where T : Object
+        public static T GetAsset<T>(AssetId assetId) where T : Object
         {
             var result = GetBundle(assetId.Bundle).Bundle.LoadAsset<T>(assetId.Name);
-            if(result==null)
+            if (result == null)
                 throw new Exception($"未在bundle {assetId.Bundle} 中找到名为 {assetId.Name} 的asset");
             return result;
         }
 
-        public T[] GetAllAsset<T>(string bundle) where T : Object
+        public static T[] GetAllAsset<T>(string bundle) where T : Object
         {
             return GetBundle(bundle).Bundle.LoadAllAssets<T>();
         }
-        
-        public void LoadBundle(string bundle)
+
+        public static void LoadBundle(string bundle)
         {
             GetBundle(bundle);
         }
 
-        public void ReleaseBundle(string bundle)
+        public static void ReleaseBundle(string bundle)
         {
             _LoadQueue.Clear();
             _LoadQueue.Enqueue(bundle);
@@ -79,21 +76,21 @@ namespace Framework
                 first = false;
             }
         }
-        
-        public void ReleaseAllBundles()
+
+        public static void ReleaseAllBundles()
         {
             while (_Bundles.Count != 0)
                 ReleaseBundle(_Bundles.Keys.First());
         }
 
-        public void Clear()
+        public static void Clear()
         {
             ReleaseAllBundles();
             _Mainfest = null;
             _MainfestBundle.Unload(true);
         }
 
-        private BundleUnit GetBundle(string bundle)
+        private static BundleUnit GetBundle(string bundle)
         {
             // 非递归地加载所有依赖的bundle
             _LoadQueue.Clear();
@@ -188,14 +185,14 @@ namespace Framework
         public static AssetId Parse(string assetPath, string defaultBundle = null)
         {
             if (_Cache.Contains(assetPath)) return _Cache.Get(assetPath);
-            if(string.IsNullOrEmpty(assetPath))
+            if (string.IsNullOrEmpty(assetPath))
                 throw AssetPathInvalidException.Default;
 
             var split = assetPath.Split('|');
 
-            var result = split.Length==1 ? 
-                new AssetId(defaultBundle, split[0]) : 
-                new AssetId(split[0],split[1]);
+            var result = split.Length == 1 ?
+                new AssetId(defaultBundle, split[0]) :
+                new AssetId(split[0], split[1]);
 
             _Cache.Add(assetPath, result);
             return result;
