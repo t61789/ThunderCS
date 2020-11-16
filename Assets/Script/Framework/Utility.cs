@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -12,7 +11,6 @@ using System.Xml.Schema;
 using System.Xml.Serialization;
 using Microsoft.Win32.SafeHandles;
 using Newtonsoft.Json;
-
 using UnityEngine;
 using UnityEngine.Assertions;
 
@@ -292,12 +290,12 @@ namespace Framework
         public V this[K key]
         {
             get => Get(key);
-            set => Add(key,value);
+            set => Add(key, value);
         }
 
         public V Get(K key)
         {
-            if (!_Dic.TryGetValue(key, out var result)) 
+            if (!_Dic.TryGetValue(key, out var result))
                 throw new KeyNotFoundException(); // 缓存中没有key，抛出异常
 
             if (_Nodes[result].Pre == -1) return _Nodes[result].Val; // 节点是头部，直接返回值
@@ -976,7 +974,7 @@ namespace Framework
                 var safeFileHandle = new SafeFileHandle(stdHandle, true);
                 var fileStream = new FileStream(safeFileHandle, FileAccess.Write);
                 var encoding = Encoding.ASCII;
-                var standardOutput = new StreamWriter(fileStream, encoding) {AutoFlush = true};
+                var standardOutput = new StreamWriter(fileStream, encoding) { AutoFlush = true };
                 Console.SetOut(standardOutput);
 
                 Application.logMessageReceived += Say;
@@ -1296,7 +1294,9 @@ namespace Framework
         }
     }
 
-    [SuppressMessage("ReSharper", "ForCanBeConvertedToForeach")]
+    /// <summary>
+    /// 用于将多个半自动计时器归入一个集合中进行更新
+    /// </summary>
     public class SemiAutoCounterHub
     {
         private readonly List<SemiAutoCounter> _Counters;
@@ -1308,14 +1308,14 @@ namespace Framework
 
         public void Update()
         {
-            for (int i = 0; i < _Counters.Count; i++)
-                _Counters[i].Update();
+            foreach (var t in _Counters)
+                t.Update();
         }
 
         public void FixedUpdate()
         {
-            for (int i = 0; i < _Counters.Count; i++)
-                _Counters[i].FixedUpdate();
+            foreach (var t in _Counters)
+                t.FixedUpdate();
         }
 
         public void AddCounter(SemiAutoCounter counter)
@@ -1329,12 +1329,16 @@ namespace Framework
         }
     }
 
+    /// <summary>
+    /// 自动计时器，采用协程
+    /// </summary>
     public class AutoCounter : Counter
     {
         private float _CountPauseSave;
         private bool _HasExcutedCompleteCallBack;
         private Action _OnCompleteCallBack;
         private bool _Running = true;
+        private Coroutine _CountCoroutine;
 
         /// <summary>
         /// </summary>
@@ -1343,7 +1347,7 @@ namespace Framework
         public AutoCounter(MonoBehaviour parent, float timeLimit) : base(timeLimit)
         {
             TimeCountStart = Time.time;
-            parent.StartCoroutine(Count());
+            _CountCoroutine = parent.StartCoroutine(Count());
         }
 
         public override float TimeCount
@@ -1420,9 +1424,14 @@ namespace Framework
             return this;
         }
 
+        public void Dispose()
+        {
+            _CountCoroutine = null;
+        }
+
         private IEnumerator Count()
         {
-            while (true)
+            while (_CountCoroutine != null)
             {
                 if (!_HasExcutedCompleteCallBack && _Running && Time.time >= TimeCountStart + TimeLimit)
                 {

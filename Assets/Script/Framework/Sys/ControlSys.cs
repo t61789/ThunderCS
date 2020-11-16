@@ -149,6 +149,8 @@ namespace Framework
         public bool Stay;
         public bool Down;
         public bool Up;
+        public bool Click;
+        public bool DoubleClick;
 
         public static readonly ControlInfo Default = new ControlInfo(default, false, false, false);
 
@@ -158,6 +160,8 @@ namespace Framework
             Stay = stay;
             Down = down;
             Up = up;
+            Click = false;
+            DoubleClick = false;
         }
     }
 

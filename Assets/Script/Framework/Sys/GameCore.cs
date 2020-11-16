@@ -19,23 +19,23 @@ namespace Framework
         public static GameCore Ins { get; private set; }
         public static Transform Container { get; private set; }
 
-        private AsyncOperation _LoadingAo;
-        private IBaseSys[] _Sys;
-        private string _CurScene;
+        private static AsyncOperation _LoadingAo;
+        private static IBaseSys[] _Sys;
+        private static string _CurScene;
 
         private void Awake()
         {
+            if(Ins!=null)
+                throw new InitDuplicatelyException();
             Ins = this;
 
             if (SaveLog)
             {
-                if (SaveLog)
-                    Application.logMessageReceived += (condition, stackTrace, logType) =>
-                    {
-                        File.AppendAllText(Paths.LogPath,
-                            $"[condition]\n{condition}\n[stackTrace]\n{stackTrace}\n");
-                    };
-                SaveLog = false;
+                Application.logMessageReceived += (condition, stackTrace, logType) =>
+                {
+                    File.AppendAllText(Paths.LogPath,
+                        $"[condition]\n{condition}\n[stackTrace]\n{stackTrace}\n");
+                };
             }// 如果开启了异常记录功能，就会将每一个异常记录到指定的日志文件中
 
             // 初始化各系统并将他们转换成数组
@@ -62,18 +62,24 @@ namespace Framework
             SceneManager.sceneUnloaded += OnExitScene;
         }
 
+        private void OnApplicationQuit()
+        {
+            foreach (var s in _Sys)
+                s.OnApplicationExit();
+        }
+
         // 异步加载场景
-        public void LoadSceneAsync(string sceneName)
+        public static void LoadSceneAsync(string sceneName)
         {
             foreach (var syss in _Sys)
                 syss.OnSceneExit(_CurScene);
 
             _LoadingAo = SceneManager.LoadSceneAsync(sceneName);
-            StartCoroutine(LoadScene(_LoadingAo, sceneName));
+            Ins.StartCoroutine(LoadScene(_LoadingAo, sceneName));
         }
 
         // 加载后启用场景的协程
-        private IEnumerator LoadScene(AsyncOperation ao, string newScene)
+        private static IEnumerator LoadScene(AsyncOperation ao, string newScene)
         {
             ao.allowSceneActivation = false;
             while (ao.progress < 0.9f)
@@ -82,25 +88,19 @@ namespace Framework
         }
 
         // 以下为方法为事件分发
-        private void OnExitScene(Scene scene)
+        private static void OnExitScene(Scene scene)
         {
             foreach (var syss in _Sys)
                 syss.OnSceneExit(_CurScene);
         }
 
-        private void OnEnterScene(Scene scene, LoadSceneMode mode)
+        private static void OnEnterScene(Scene scene, LoadSceneMode mode)
         {
             Container = new GameObject("Container").transform;
             var targetScene = scene.name;
             foreach (var s in _Sys)
                 s.OnSceneEnter(_CurScene, targetScene);
             _CurScene = targetScene;
-        }
-
-        private void OnApplicationQuit()
-        {
-            foreach (var s in _Sys)
-                s.OnApplicationExit();
         }
     }
     public interface IBaseSys
